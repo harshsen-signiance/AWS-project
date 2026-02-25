@@ -11,19 +11,34 @@ phases:
     runtime-versions:
       nodejs: 18
     commands:
-      - cd frontend && npm install
-      - cd ../backend && npm install
+      - echo "Repo root contents:"
+      - ls -la
+
+      - echo "Installing frontend dependencies"
+      - pushd frontend
+      - npm install
+      - popd
+
+      - echo "Installing backend dependencies"
+      - pushd backend
+      - npm install
+      - popd
 
   build:
     commands:
-      - cd frontend && npm run build
-      - cd ..
+      - echo "Building frontend"
+      - pushd frontend
+      - npm run build
+      - popd
 
   post_build:
     commands:
+      - echo "Deploying frontend to S3"
       - aws s3 sync frontend/build s3://$FRONTEND_BUCKET --delete
 
-      - aws ssm send-command \
+      - echo "Deploying backend via SSM"
+      - |
+        aws ssm send-command \
           --document-name "AWS-RunShellScript" \
           --targets "Key=instanceids,Values=$BACKEND_INSTANCE_ID" \
           --parameters 'commands=[

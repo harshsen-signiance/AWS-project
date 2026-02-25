@@ -1,33 +1,33 @@
 const { Pool } = require("pg");
-const { getDbSecret } = require("./secrets");
+const { getSecret } = require("./secrets");
 
 let pool;
 
 async function initDb() {
-  const secret = await getDbSecret();
+  if (pool) return pool;
+
+  const secret = await getSecret("prod-app/db");
+  const creds = JSON.parse(secret);
 
   pool = new Pool({
-    host: secret.host,
-    user: secret.username,
-    password: secret.password,
-    database: secret.dbname,
-    port: secret.port,
-    ssl: { rejectUnauthorized: false },
+    host: creds.host,
+    user: creds.username,
+    password: creds.password,
+    database: creds.dbname,
+    port: 5432,
+    ssl: false,
   });
 
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS todos (
-      id SERIAL PRIMARY KEY,
-      task TEXT NOT NULL,
-      completed BOOLEAN DEFAULT FALSE
-    );
-  `);
+  await pool.query("SELECT 1");
+  console.log("✅ Connected to RDS");
 
-  console.log("✅ Connected to database");
+  return pool;
 }
 
 function getPool() {
-  if (!pool) throw new Error("DB not initialized");
+  if (!pool) {
+    throw new Error("DB not initialized. Call initDb() first.");
+  }
   return pool;
 }
 

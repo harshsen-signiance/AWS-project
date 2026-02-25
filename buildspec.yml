@@ -15,21 +15,15 @@ phases:
       - ls -la
 
       - echo "Installing frontend dependencies"
-      - pushd frontend
-      - npm install
-      - popd
+      - (cd frontend && npm install)
 
       - echo "Installing backend dependencies"
-      - pushd backend
-      - npm install
-      - popd
+      - (cd backend && npm install)
 
   build:
     commands:
       - echo "Building frontend"
-      - pushd frontend
-      - npm run build
-      - popd
+      - (cd frontend && npm run build)
 
   post_build:
     commands:

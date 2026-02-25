@@ -1,0 +1,36 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_REGION: us-east-1
+    FRONTEND_BUCKET: todo-frontend-harsh-8411
+    BACKEND_INSTANCE_ID: i-xxxxxxxxxxxx
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+    commands:
+      - cd frontend && npm install
+      - cd ../backend && npm install
+
+  build:
+    commands:
+      - cd frontend && npm run build
+      - cd ..
+
+  post_build:
+    commands:
+      - aws s3 sync frontend/build s3://$FRONTEND_BUCKET --delete
+
+      - aws ssm send-command \
+          --document-name "AWS-RunShellScript" \
+          --targets "Key=instanceids,Values=$BACKEND_INSTANCE_ID" \
+          --parameters 'commands=[
+            "cd /var/www/todo-backend",
+            "git pull origin main",
+            "npm install",
+            "pm2 restart todo-backend || pm2 start app.js --name todo-backend",
+            "pm2 save"
+          ]' \
+          --region $AWS_REGION

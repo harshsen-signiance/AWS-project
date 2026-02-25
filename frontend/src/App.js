@@ -45,14 +45,24 @@ function App() {
         </button>
       </div>
 
-      <ul className="todo-list">
-        {todos.map((todo) => (
-          <li key={todo.id}>
-            <span>{todo.task}</span>
-            <button onClick={() => handleDelete(todo.id)}>❌</button>
-          </li>
-        ))}
-      </ul>
+      <table className="todo-table">
+        <thead>
+          <tr>
+            <th>Task</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {todos.map((todo) => (
+            <tr key={todo.id}>
+              <td>{todo.task}</td>
+              <td>
+                <button onClick={() => handleDelete(todo.id)}>❌</button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
 
       <p className="footer">
         Frontend: S3 • Backend: EC2 + ALB • DB: RDS

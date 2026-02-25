@@ -43,17 +43,34 @@ button:hover {
   background: #1d4ed8;
 }
 
-.todo-list {
-  list-style: none;
-  padding: 0;
+.todo-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
 }
 
-.todo-list li {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px;
-  background: #020617;
+.todo-table th,
+.todo-table td {
+  padding: 12px 15px;
+  text-align: left;
   border-bottom: 1px solid #1e293b;
+}
+
+.todo-table th {
+  background-color: #1e293b;
+  color: #e5e7eb;
+}
+
+.todo-table button {
+  background: none;
+  border: none;
+  color: #ef4444;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.todo-table button:hover {
+  color: #dc2626;
 }
 
 .footer {

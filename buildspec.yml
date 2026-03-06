@@ -39,7 +39,7 @@ phases:
             "cd /var/www/todo-backend",
             "git pull origin main",
             "npm install",
-            "pm2 restart todo-backend || pm2 start app.js --name todo-backend",
+            "DB_SSL=true pm2 restart todo-backend || DB_SSL=true pm2 start app.js --name todo-backend",
             "pm2 save"
           ]' \
           --region $AWS_REGION

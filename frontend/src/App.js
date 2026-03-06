@@ -32,40 +32,40 @@ function App() {
 
   return (
     <div className="container">
-      <h1>Todo App (3-Tier)</h1>
+      <h1>Todo App</h1>
 
       <div className="add-box">
         <input
           value={task}
           onChange={(e) => setTask(e.target.value)}
-          placeholder="Enter a task"
+          placeholder="What needs to be done?"
         />
-        <button onClick={handleAdd} disabled={loading}>
-          Add
+        <button className="add-btn" onClick={handleAdd} disabled={loading}>
+          {loading ? "Adding..." : "Add Task"}
         </button>
       </div>
 
-      <table className="todo-table">
-        <thead>
-          <tr>
-            <th>Task</th>
-            <th>Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {todos.map((todo) => (
-            <tr key={todo.id}>
-              <td>{todo.task}</td>
-              <td>
-                <button onClick={() => handleDelete(todo.id)}>❌</button>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <div className="todo-list">
+        {todos.length === 0 && !loading ? (
+          <div className="empty-state">No tasks yet. Enjoy your day!</div>
+        ) : (
+          todos.map((todo) => (
+            <div className="todo-item" key={todo.id}>
+              <span className="todo-text">{todo.task}</span>
+              <button
+                className="delete-btn"
+                onClick={() => handleDelete(todo.id)}
+                title="Delete task"
+              >
+                ×
+              </button>
+            </div>
+          ))
+        )}
+      </div>
 
       <p className="footer">
-        Frontend: S3 • Backend: EC2 + ALB • DB: RDS
+        Powered by AWS • S3 • EC2 • RDS
       </p>
     </div>
   );

@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: todo-db
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_USER: todo_user
+      MYSQL_PASSWORD: todo_password
+      MYSQL_DATABASE: todo_db
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "todo_user", "-ptodo_password" ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: todo-backend
+    ports:
+      - "8080:8080"
+    environment:
+      - DB_HOST=db
+      - DB_USER=todo_user
+      - DB_PASSWORD=todo_password
+      - DB_NAME=todo_db
+      - DB_PORT=3306
+      - DB_SSL=false
+      - PORT=8080
+    depends_on:
+      db:
+        condition: service_healthy
+
+# Note: Frontend is typically run via 'npm start' locally for hot-reloading,
+# but can be added here if needed for a full containerized stack.

@@ -54,7 +54,7 @@ app.delete("/todos/:id", async (req, res) => {
 async function start() {
   await initDb();
   app.listen(PORT, () =>
-    console.log(`🚀 Backend listening on port ${PORT}`)
+    console.log(`🚀 Backend listens on port ${PORT}`)
   );
 }
 

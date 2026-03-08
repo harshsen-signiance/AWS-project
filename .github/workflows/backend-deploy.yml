@@ -33,7 +33,7 @@ jobs:
 
     - name: Build Docker image
       run: |
-        docker build -t $ECR_REPOSITORY .
+        docker build -t $ECR_REPOSITORY ./backend/
         docker tag $ECR_REPOSITORY:latest ${{ steps.login-ecr.outputs.registry }}/$ECR_REPOSITORY:latest
 
     - name: Push Docker image

@@ -3,17 +3,22 @@ const cors = require("cors");
 const { initDb, getPool } = require("./db");
 
 const app = express();
+
+// Allow CORS_ORIGIN env var to override at runtime (useful for S3 deployments)
+const allowedOrigins = [
+  process.env.CORS_ORIGIN,
+  'http://prod-app-frontend-harsh.s3-website-us-east-1.amazonaws.com',
+  'http://localhost:3000'
+].filter(Boolean); // removes undefined if CORS_ORIGIN is not set
+
 const corsOptions = {
-  origin: [
-    'http://prod-app-frontend-harsh.s3-website-us-east-1.amazonaws.com',
-    'http://localhost:3000'
-  ],
+  origin: allowedOrigins,
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
 app.use(express.json());
 
-const PORT = 8080;
+const PORT = process.env.PORT || 8080;
 
 app.get("/health", (req, res) => {
   res.json({ status: "ok" });
@@ -26,24 +31,23 @@ app.post("/todos", async (req, res) => {
   }
 
   const pool = getPool();
-  const [result] = await pool.query(
-    "INSERT INTO todos (task) VALUES (?)",
+  const result = await pool.query(
+    "INSERT INTO todos (task) VALUES ($1) RETURNING *",
     [task]
   );
 
-  const [rows] = await pool.query("SELECT * FROM todos WHERE id = ?", [result.insertId]);
-  res.json(rows[0]);
+  res.json(result.rows[0]);
 });
 
 app.get("/todos", async (req, res) => {
   const pool = getPool();
-  const [rows] = await pool.query("SELECT * FROM todos ORDER BY id DESC");
-  res.json(rows);
+  const result = await pool.query("SELECT * FROM todos ORDER BY id DESC");
+  res.json(result.rows);
 });
 
 app.delete("/todos/:id", async (req, res) => {
   const pool = getPool();
-  await pool.query("DELETE FROM todos WHERE id = ?", [req.params.id]);
+  await pool.query("DELETE FROM todos WHERE id=$1", [req.params.id]);
   res.json({ success: true });
 });
 

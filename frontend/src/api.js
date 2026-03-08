@@ -3,21 +3,40 @@ const API_BASE =
   "http://alb-harsh-279325154.us-east-1.elb.amazonaws.com";
 
 export async function getTodos() {
-  const res = await fetch(`${API_BASE}/todos`);
-  return res.json();
+  try {
+    const res = await fetch(`${API_BASE}/todos`);
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    const data = await res.json();
+    return Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error("❌ getTodos failed:", err.message);
+    throw err;
+  }
 }
 
 export async function addTodo(task) {
-  const res = await fetch(`${API_BASE}/todos`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ task }),
-  });
-  return res.json();
+  try {
+    const res = await fetch(`${API_BASE}/todos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ task }),
+    });
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+    return res.json();
+  } catch (err) {
+    console.error("❌ addTodo failed:", err.message);
+    throw err;
+  }
 }
 
 export async function deleteTodo(id) {
-  await fetch(`${API_BASE}/todos/${id}`, {
-    method: "DELETE",
-  });
+  try {
+    const res = await fetch(`${API_BASE}/todos/${id}`, {
+      method: "DELETE",
+    });
+    if (!res.ok) throw new Error(`Server error: ${res.status}`);
+  } catch (err) {
+    console.error("❌ deleteTodo failed:", err.message);
+    throw err;
+  }
 }

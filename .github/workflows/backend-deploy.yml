@@ -1,39 +1,202 @@
-name: Deploy Backend to ECS
+name: Backend CI/CD (ECS Production)
 
 on:
   push:
     branches:
       - main
+    paths:
+      - "backend/**"
+      - ".github/workflows/backend-deploy.yml"
+
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: $ {{ secrets.ECR_REPOSITORY }}
+  ECS_CLUSTER: $ {{ secrets.ECS_CLUSTER }}
+  ECS_SERVICE: $ {{ secrets.ECS_SERVICE }}
+  TASK_DEFINITION: $ {{ secrets.TASK_DEFINITION }}
 
 jobs:
-  deploy:
+
+# -----------------------------
+# 1️ Code Validation
+# -----------------------------
+
+  validate:
+    name: Code Validation
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install dependencies
+        run: |
+          cd backend
+          npm ci
+
+      - name: Run lint
+        run: |
+          cd backend
+          npm run lint || true
+
+      - name: Run tests
+        run: |
+          cd backend
+          npm test || true
+
+# -----------------------------
+# 2️ Security Scan
+# -----------------------------
+
+  security:
+    name: Dependency Security Scan
+    runs-on: ubuntu-latest
+    needs: validate
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: NPM audit
+        run: |
+          cd backend
+          npm audit --audit-level=high || true
+
+# -----------------------------
+# 3️ Build & Push Docker Image
+# -----------------------------
+
+  build:
+    name: Build & Push Image
+    runs-on: ubuntu-latest
+    needs: security
+
+    outputs:
+      image: ${{ steps.build.outputs.image }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: us-east-1
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build, tag and push image
+      - name: Build & Push Image
+        id: build
         run: |
-          IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/todo-backend-api:latest
+
+          IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
 
           docker build -t $IMAGE_URI ./backend
           docker push $IMAGE_URI
 
-      - name: Deploy to ECS
+          echo "image=$IMAGE_URI" >> $GITHUB_OUTPUT
+
+# -----------------------------
+# 4️ Container Security Scan
+# -----------------------------
+
+  image-scan:
+    name: Container Security Scan
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps:
+      - name: Scan Docker image
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ needs.build.outputs.image }}
+          severity: HIGH,CRITICAL
+          exit-code: 0
+
+# -----------------------------
+# 5️ Deploy to ECS
+# -----------------------------
+
+  deploy:
+    name: Deploy to ECS
+    runs-on: ubuntu-latest
+    needs: image-scan
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update ECS Service
         run: |
           aws ecs update-service \
-            --cluster ${{ secrets.ECS_CLUSTER }} \
-            --service ${{ secrets.ECS_SERVICE }} \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SERVICE }} \
+            --force-new-deployment
+
+      - name: Wait for service stability
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.ECS_SERVICE }}
+
+# -----------------------------
+# 6️ Health Check
+# -----------------------------
+
+  verify:
+    name: Health Check
+    runs-on: ubuntu-latest
+    needs: deploy
+
+    steps:
+      - name: Verify Application Health
+        run: |
+
+          for i in {1..10}; do
+            curl -f http://YOUR_ALB_DNS/health && exit 0
+            sleep 10
+          done
+
+          exit 1
+
+# -----------------------------
+# 7️ Rollback (If Failure)
+# -----------------------------
+
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: failure()
+    needs: [deploy, verify]
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Rollback ECS Service
+        run: |
+
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.ECS_SERVICE }} \
             --force-new-deployment

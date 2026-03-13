@@ -117,10 +117,14 @@ jobs:
     needs: build
 
     steps:
-      - name: Set image URI
-        id: image
+      - name: Validate image reference
         run: |
-          echo "IMAGE_URI=${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}" >> $GITHUB_ENV
+          IMAGE_REF="${{ needs.build.outputs.image }}"
+          if [ -z "$IMAGE_REF" ]; then
+            echo "::error::Image reference is empty. The build job may not have produced an output."
+            exit 1
+          fi
+          echo "Scanning image: $IMAGE_REF"
 
       - name: Scan Docker image
         uses: aquasecurity/trivy-action@master

@@ -229,7 +229,6 @@ jobs:
   needs: [validate, build, deploy, verify]
 
   steps:
-
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:

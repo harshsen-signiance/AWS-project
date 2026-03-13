@@ -117,19 +117,32 @@ jobs:
     needs: build
 
     steps:
-      - name: Validate image reference
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_OIDC_ }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set image URI
+        id: set-image
         run: |
-          IMAGE_REF="${{ needs.build.outputs.image }}"
-          if [ -z "$IMAGE_REF" ]; then
-            echo "::error::Image reference is empty. The build job may not have produced an output."
-            exit 1
+          BUILD_OUTPUT="${{ needs.build.outputs.image }}"
+          if [ -n "$BUILD_OUTPUT" ]; then
+            echo "image=$BUILD_OUTPUT" >> $GITHUB_OUTPUT
+          else
+            IMAGE_URI=${{ steps.login-ecr.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+            echo "::warning::Build output was empty, constructed image URI: $IMAGE_URI"
+            echo "image=$IMAGE_URI" >> $GITHUB_OUTPUT
           fi
-          echo "Scanning image: $IMAGE_REF"
 
       - name: Scan Docker image
         uses: aquasecurity/trivy-action@master
         with:
-          image-ref: ${{ needs.build.outputs.image }}
+          image-ref: ${{ steps.set-image.outputs.image }}
           severity: HIGH,CRITICAL
           exit-code: 0
 

@@ -113,6 +113,11 @@ jobs:
 # -----------------------------
 
   image-scan:
+  name: Set image URI
+  id: image
+  run: |
+    echo "IMAGE_URI=${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}" >> $GITHUB_ENV
+
     name: Container Security Scan
     runs-on: ubuntu-latest
     needs: build

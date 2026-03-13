@@ -22,10 +22,9 @@ env:
   TASK_DEFINITION: ${{ secrets.TASK_DEFINITION }}
 
 jobs:
-
-# -----------------------------
-# 1️ Code Validation
-# -----------------------------
+  # -----------------------------
+  # 1️ Code Validation
+  # -----------------------------
 
   validate:
     name: Code Validation
@@ -55,9 +54,9 @@ jobs:
           cd backend
           npm test || true
 
-# -----------------------------
-# 2️ Security Scan
-# -----------------------------
+  # -----------------------------
+  # 2️ Security Scan
+  # -----------------------------
 
   security:
     name: Dependency Security Scan
@@ -72,9 +71,9 @@ jobs:
           cd backend
           npm audit --audit-level=high || true
 
-# -----------------------------
-# 3️ Build & Push Docker Image
-# -----------------------------
+  # -----------------------------
+  # 3️ Build & Push Docker Image
+  # -----------------------------
 
   build:
     name: Build & Push Image
@@ -108,21 +107,21 @@ jobs:
 
           echo "image=$IMAGE_URI" >> $GITHUB_OUTPUT
 
-# -----------------------------
-# 4️ Container Security Scan
-# -----------------------------
+  # -----------------------------
+  # 4️ Container Security Scan
+  # -----------------------------
 
   image-scan:
-  name: Set image URI
-  id: image
-  run: |
-    echo "IMAGE_URI=${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}" >> $GITHUB_ENV
-
     name: Container Security Scan
     runs-on: ubuntu-latest
     needs: build
 
     steps:
+      - name: Set image URI
+        id: image
+        run: |
+          echo "IMAGE_URI=${{ secrets.ECR_REPOSITORY }}:${{ github.sha }}" >> $GITHUB_ENV
+
       - name: Scan Docker image
         uses: aquasecurity/trivy-action@master
         with:
@@ -130,9 +129,9 @@ jobs:
           severity: HIGH,CRITICAL
           exit-code: 0
 
-# -----------------------------
-# 5️ Deploy to ECS
-# -----------------------------
+  # -----------------------------
+  # 5️ Deploy to ECS
+  # -----------------------------
 
   deploy:
     name: Deploy to ECS
@@ -161,9 +160,9 @@ jobs:
             --cluster ${{ env.ECS_CLUSTER }} \
             --services ${{ env.ECS_SERVICE }}
 
-# -----------------------------
-# 6️ Health Check
-# -----------------------------
+  # -----------------------------
+  # 6️ Health Check
+  # -----------------------------
 
   verify:
     name: Health Check
@@ -181,9 +180,9 @@ jobs:
 
           exit 1
 
-# -----------------------------
-# 7️ Rollback (If Failure)
-# -----------------------------
+  # -----------------------------
+  # 7️ Rollback (If Failure)
+  # -----------------------------
 
   rollback:
     name: Rollback Deployment

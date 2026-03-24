@@ -222,25 +222,28 @@ jobs:
             --service ${{ env.ECS_SERVICE }} \
             --force-new-deployment
 
-  notify:
-    name: Send SNS Notification
-    runs-on: ubuntu-latest
-    if: always()
-    needs: [validate, build, deploy, verify]
+notify:
+  name: Slack Notification
+  runs-on: ubuntu-latest
+  if: always()
+  needs: [validate, build, deploy, verify]
 
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ secrets.AWS_OIDC_ }}
-          aws-region: ${{ env.AWS_REGION }}
+  steps:
+    - name: Send Slack Notification
+      run: |
+        STATUS="${{ job.status }}"
+        REPO="${{ github.repository }}"
+        BRANCH="${{ github.ref_name }}"
+        COMMIT="${{ github.sha }}"
+        WORKFLOW="${{ github.workflow }}"
 
-      - name: Send Email Alert
-        run: |
-          STATUS="${{ job.status }}"
-          MESSAGE="Backend CI/CD pipeline finished with status: $STATUS"
+        MESSAGE="🚀 *Backend Deployment*
+        Status: $STATUS
+        Repo: $REPO
+        Branch: $BRANCH
+        Commit: $COMMIT
+        Workflow: $WORKFLOW"
 
-          aws sns publish \
-            --topic-arn ${{ secrets.SNS_TOPIC_ARN }} \
-            --subject "CI/CD Pipeline Alert" \
-            --message "$MESSAGE"
+        curl -X POST -H 'Content-type: application/json' \
+        --data "{\"text\":\"$MESSAGE\"}" \
+        ${{ secrets.SLACK_WEBHOOK_URL }}
